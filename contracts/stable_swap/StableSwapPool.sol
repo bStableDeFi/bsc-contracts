@@ -123,7 +123,7 @@ contract StableSwapPool is
         future_A = _A;
         fee = _fee;
         admin_fee = _admin_fee;
-        kill_deadline = block.timestamp + KILL_DEADLINE_DT;
+        kill_deadline = block.timestamp.add(KILL_DEADLINE_DT);
         balances = new uint256[](coins.length);
         for (uint256 i = 0; i < coins.length; i++) {
             balances[i] = 0;
@@ -224,11 +224,11 @@ contract StableSwapPool is
             D = numerator.div(denominator);
             // Equality with the precision of 1
             if (D > Dprev) {
-                if ((D - Dprev) <= 1) {
+                if ((D.sub(Dprev)) <= 1) {
                     break;
                 }
             } else {
-                if ((Dprev - D) <= 1) {
+                if (Dprev.sub(D) <= 1) {
                     break;
                 }
             }
@@ -438,11 +438,11 @@ contract StableSwapPool is
             );
             // # Equality with the precision of 1
             if (y > y_prev) {
-                if ((y - y_prev) <= 1) {
+                if (y.sub(y_prev) <= 1) {
                     break;
                 }
             } else {
-                if ((y_prev - y) <= 1) {
+                if (y_prev.sub(y) <= 1) {
                     break;
                 }
             }
@@ -614,7 +614,7 @@ contract StableSwapPool is
         // token_amount: uint256 = (D0 - D2) * token_supply / D0
         uint256 token_amount = D0.sub(D2).mul(totalSupply()).div(D0);
         require(token_amount != 0, " # dev: zero tokens burned");
-        token_amount += 1; //  # In case of rounding errors - make it unfavorable for the "attacker"
+        token_amount = token_amount.add(uint256(1)); //  # In case of rounding errors - make it unfavorable for the "attacker"
         require(token_amount <= max_burn_amount, "Slippage screwed you");
 
         _burn(msg.sender, token_amount); //  # dev: insufficient funds
@@ -650,7 +650,7 @@ contract StableSwapPool is
 
         uint256 c = D;
         uint256 S_ = 0;
-        uint256 Ann = A_ * coins.length;
+        uint256 Ann = A_.mul(coins.length);
 
         uint256 _x = 0;
         for (uint256 _i = 0; _i < coins.length; _i++) {
@@ -676,11 +676,11 @@ contract StableSwapPool is
             y = y.mul(y).add(c).div(y.mul(uint256(2)).add(b).sub(D));
             // # Equality with the precision of 1
             if (y > y_prev) {
-                if ((y - y_prev) <= 1) {
+                if (y.sub(y_prev) <= 1) {
                     break;
                 }
             } else {
-                if ((y_prev - y) <= 1) {
+                if (y_prev.sub(y) <= 1) {
                     break;
                 }
             }
@@ -729,7 +729,7 @@ contract StableSwapPool is
         // dy = (dy - 1) / precisions[i]  # Withdraw less to account for rounding errors
         dy = dy.sub(uint256(1)).div(PRECISION_MUL[i]); // # Withdraw less to account for rounding errors
         r1 = dy;
-        r2 = dy_0 - dy;
+        r2 = dy_0.sub(dy);
     }
 
     function calc_withdraw_one_coin(uint256 _token_amount, uint256 i)
