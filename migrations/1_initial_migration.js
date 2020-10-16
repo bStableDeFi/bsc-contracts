@@ -31,7 +31,8 @@ module.exports = async function (deployer) {
         let A = 100;
         let fee = 4000000;// 1e-10, 0.04%
         let adminFee = 0;
-        await deployer.deploy(StableSwapPool, stableCoins, A, fee, adminFee);
+        let stableSwapPoolContract = await deployer.deploy(StableSwapPool, stableCoins, A, fee, adminFee);
+        console.log(stableSwapPoolContract.address);
     } else {
 
     }

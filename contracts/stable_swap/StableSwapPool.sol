@@ -219,7 +219,7 @@ contract StableSwapPool is
                 .add(D_P.mul(uint256(coins.length)))
                 .mul(D);
             uint256 denominator = Ann.sub(uint256(1)).mul(D).add(
-                uint256(coins.length + 1).mul(D_P)
+                uint256(coins.length).add(uint256(1)).mul(D_P)
             );
             D = numerator.div(denominator);
             // Equality with the precision of 1
@@ -296,7 +296,7 @@ contract StableSwapPool is
         uint256[] memory fees = new uint256[](coins.length);
         // _fee: uint256 = self.fee * coins.length / (4 * (coins.length - 1))
         uint256 _fee = fee.mul(coins.length).div(
-            uint256(4 * (coins.length - 1))
+            uint256(4).mul(uint256(coins.length).sub(uint256(1)))
         );
         uint256 amp = _A();
 
@@ -697,7 +697,9 @@ contract StableSwapPool is
         // # * Solve Eqn against y_i for D - _token_amount
         uint256 amp = _A();
         // _fee: uint256 = self.fee * coins.length / (4 * (coins.length - 1))
-        uint256 _fee = fee.mul(coins.length).div(4 * (coins.length - 1));
+        uint256 _fee = fee.mul(coins.length).div(
+            uint256(4).mul(uint256(coins.length).sub(uint256(1)))
+        );
 
         uint256[] memory xp = _xp();
 
@@ -766,11 +768,11 @@ contract StableSwapPool is
         onlyOwner
     {
         require(
-            block.timestamp >= initial_A_time + MIN_RAMP_TIME,
+            block.timestamp >= initial_A_time.add(MIN_RAMP_TIME),
             "block.timestamp >= self.initial_A_time + MIN_RAMP_TIME"
         );
         require(
-            _future_time >= block.timestamp + MIN_RAMP_TIME,
+            _future_time >= block.timestamp.add(MIN_RAMP_TIME),
             "  # dev: insufficient time"
         );
 
@@ -781,9 +783,9 @@ contract StableSwapPool is
         );
         require(
             ((_future_A >= _initial_A) &&
-                (_future_A <= _initial_A * MAX_A_CHANGE)) ||
+                (_future_A <= _initial_A.mul(MAX_A_CHANGE))) ||
                 ((_future_A < _initial_A) &&
-                    (_future_A * MAX_A_CHANGE >= _initial_A)),
+                    (_future_A.mul(MAX_A_CHANGE) >= _initial_A)),
             "complex conditions"
         );
         initial_A = _initial_A;
@@ -816,7 +818,7 @@ contract StableSwapPool is
             "  # dev: admin fee exceeds maximum"
         );
 
-        uint256 _deadline = block.timestamp + ADMIN_ACTIONS_DELAY;
+        uint256 _deadline = block.timestamp.add(ADMIN_ACTIONS_DELAY);
         admin_actions_deadline = _deadline;
         future_fee = new_fee;
         future_admin_fee = new_admin_fee;
@@ -847,7 +849,7 @@ contract StableSwapPool is
     function commit_transfer_ownership(address _owner) external onlyOwner {
         require(transfer_ownership_deadline == 0, "  # dev: active transfer");
 
-        uint256 _deadline = block.timestamp + ADMIN_ACTIONS_DELAY;
+        uint256 _deadline = block.timestamp.add(ADMIN_ACTIONS_DELAY);
         transfer_ownership_deadline = _deadline;
         future_owner = _owner;
 
