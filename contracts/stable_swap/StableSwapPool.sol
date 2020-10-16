@@ -224,7 +224,7 @@ contract StableSwapPool is
             D = numerator.div(denominator);
             // Equality with the precision of 1
             if (D > Dprev) {
-                if ((D.sub(Dprev)) <= 1) {
+                if (D.sub(Dprev) <= 1) {
                     break;
                 }
             } else {
