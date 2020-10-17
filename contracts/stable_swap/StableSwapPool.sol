@@ -7,7 +7,7 @@ import "@openzeppelin/contracts/math/SafeMath.sol";
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import "../lib/TransferHelper.sol";
 
-// 本交换池仅支持bsc链上的 DAI，USDT, BUSD 兑换
+// 本交换池仅支持bsc链上的 DAI, BUSD, USDT 兑换
 contract StableSwapPool is
     BEP20("Stable Smart Swap Pool", "sSSLP"),
     Ownable,
