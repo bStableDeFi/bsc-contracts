@@ -29,8 +29,9 @@ module.exports = async function (deployer) {
         let usdtAddress = '0x337610d27c682e347c9cd60bd4b3b107c9d34ddd';
         let stableCoins = [daiAddress, busdAddress, usdtAddress];
         let A = 100;
-        let fee = 4000000;// 1e-10, 0.04%
-        let adminFee = 0;
+        let fee = 4000000;// 1e-10, 0.0004, 0.04%
+        // let adminFee = 0;
+        let adminFee = 5000000000; // 1e-10, 0.5, 50% 
         let stableSwapPoolContract = await deployer.deploy(StableSwapPool, stableCoins, A, fee, adminFee);
         // console.log(stableSwapPoolContract.address);
     } else {
