@@ -846,32 +846,6 @@ contract StableSwapPool is
         admin_actions_deadline = 0;
     }
 
-    function commit_transfer_ownership(address _owner) external onlyOwner {
-        require(transfer_ownership_deadline == 0, "  # dev: active transfer");
-
-        uint256 _deadline = block.timestamp.add(ADMIN_ACTIONS_DELAY);
-        transfer_ownership_deadline = _deadline;
-        future_owner = _owner;
-
-        emit CommitNewAdmin(_deadline, _owner);
-    }
-
-    function apply_transfer_ownership() external onlyOwner {
-        require(
-            block.timestamp >= transfer_ownership_deadline,
-            "  # dev: insufficient time"
-        );
-        require(
-            transfer_ownership_deadline != 0,
-            "  # dev: no active transfer"
-        );
-
-        transfer_ownership_deadline = 0;
-        transferOwnership(future_owner);
-
-        emit NewAdmin(future_owner);
-    }
-
     function revert_transfer_ownership() external onlyOwner {
         transfer_ownership_deadline = 0;
     }
