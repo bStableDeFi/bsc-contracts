@@ -385,7 +385,7 @@ contract StableSwapPool is
             amounts,
             fees,
             D1,
-            totalSupply() + mint_amount
+            totalSupply().add(mint_amount)
         );
     }
 
@@ -566,7 +566,7 @@ contract StableSwapPool is
         }
         _burn(msg.sender, _amount); // # dev: insufficient funds
 
-        emit RemoveLiquidity(msg.sender, amounts, fees, total_supply - _amount);
+        emit RemoveLiquidity(msg.sender, amounts, fees, total_supply.sub(_amount));
     }
 
     function remove_liquidity_imbalance(
@@ -628,7 +628,7 @@ contract StableSwapPool is
             amounts,
             fees,
             D1,
-            totalSupply() - token_amount
+            totalSupply().sub(token_amount)
         );
     }
 
