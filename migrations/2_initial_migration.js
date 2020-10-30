@@ -1,4 +1,4 @@
-const StableSwapPool = artifacts.require("StableSwapPool");
+const SmartSwapPool02 = artifacts.require("SmartSwapPool02");
 
 module.exports = async function (deployer) {
     if (deployer.network.indexOf('skipMigrations') > -1) { // skip migration
@@ -24,15 +24,15 @@ module.exports = async function (deployer) {
 
     } else if (deployer.network_id == 97) { //bsc test net
         // dai busd usdt
-        let daiAddress = '0xec5dcb5dbf4b114c9d0f65bccab49ec54f6a0867';
+        let qusdAddress = '0x43B8ad974F49553dd4f5f3cB534A368fbC4761DB';
         let busdAddress = '0xed24fc36d5ee211ea25a80239fb8c4cfd80f12ee';
         let usdtAddress = '0x337610d27c682e347c9cd60bd4b3b107c9d34ddd';
-        let stableCoins = [daiAddress, busdAddress, usdtAddress];
+        let stableCoins = [qusdAddress, busdAddress, usdtAddress];
         let A = 100;
         let fee = 30000000;// 1e-10, 0.003, 0.3%
         // let adminFee = 0;
         let adminFee = 6666666666; // 1e-10, 0.666667, 66.67% 
-        let stableSwapPoolContract = await deployer.deploy(StableSwapPool, stableCoins, A, fee, adminFee);
+        let smartSwapPool02Contract = await deployer.deploy(SmartSwapPool02, stableCoins, A, fee, adminFee);
         // console.log(stableSwapPoolContract.address);
     } else {
 
