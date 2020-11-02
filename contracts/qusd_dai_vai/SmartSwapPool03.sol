@@ -9,7 +9,7 @@ import "../lib/TransferHelper.sol";
 
 // 本交换池仅支持bsc链上的 QUSD, BUSD, USDT 兑换
 contract SmartSwapPool03 is
-    BEP20("Smart Swap Pool (QUSD/DAI/VAI)", "SSLP-03"),
+    BEP20("bStable Pool (QUSD/DAI/VAI)", "BSLP-03"),
     Ownable,
     ReentrancyGuard
 {
