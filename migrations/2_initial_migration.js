@@ -21,7 +21,15 @@ module.exports = async function (deployer) {
     } else if (deployer.network_id == 5777) {
     } else if (deployer.network_id == 42) { // kovan
     } else if (deployer.network_id == 56) { // bsc main net
-
+        let qusdAddress = '0xb8c540d00dd0bf76ea12e4b4b95efc90804f924e';
+        let busdAddress = '0xe9e7cea3dedca5984780bafc599bd69add087d56';
+        let usdtAddress = '0x55d398326f99059ff775485246999027b3197955';
+        let stableCoins = [qusdAddress, busdAddress, usdtAddress];
+        let A = 100;
+        let fee = 30000000;// 1e-10, 0.003, 0.3%
+        // let adminFee = 0;
+        let adminFee = 6666666666; // 1e-10, 0.666667, 66.67% 
+        let smartSwapPool02Contract = await deployer.deploy(SmartSwapPool02, stableCoins, A, fee, adminFee);
     } else if (deployer.network_id == 97) { //bsc test net
         // dai busd usdt
         let qusdAddress = '0x43B8ad974F49553dd4f5f3cB534A368fbC4761DB';
