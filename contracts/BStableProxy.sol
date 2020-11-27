@@ -345,7 +345,7 @@ contract BStableProxy is IBStableProxy, BEP20, Ownable, ReentrancyGuard {
     }
 
     function rollBack(address _revertTo) external override onlyOwner {
-        require(_revertTo != revertTo, "roll back target wrong.");
+        require(_revertTo == revertTo, "roll back target wrong.");
         _transferPoolOwnership(revertTo);
         _deprecated = true;
     }
