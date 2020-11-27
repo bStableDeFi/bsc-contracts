@@ -106,3 +106,5 @@ dist
 .openzeppelin
 
 secret.js
+
+flat.sol
