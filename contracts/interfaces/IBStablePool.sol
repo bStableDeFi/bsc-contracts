@@ -75,4 +75,6 @@ interface IBStablePool is IBEP20 {
     function unkill_me() external;
 
     function transferOwnership(address newOwner) external;
+
+    function owner() external view returns (address _owner);
 }

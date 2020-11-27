@@ -944,6 +944,27 @@ interface IBStablePool is IBEP20 {
     function unkill_me() external;
 
     function transferOwnership(address newOwner) external;
+
+    function owner() external view returns (address _owner);
+}
+
+// File: contracts/interfaces/IBStableProxy.sol
+
+pragma solidity ^0.6.0;
+
+
+interface IBStableProxy is IBEP20 {
+    function setPoolAddress(address poolAddress) external;
+
+    function upgrade(address upgradeTo) external;
+
+    function setUpgradeTo(address _upgradeTo) external;
+
+    function setRevertTo(address _revertTo) external;
+
+    function rollBack(address _revertTo) external;
+
+    function getUpgradeTo() external view returns (address upgradeTo);
 }
 
 // File: @openzeppelin/contracts/utils/ReentrancyGuard.sol
@@ -1041,7 +1062,7 @@ library TransferHelper {
     }
 }
 
-// File: contracts/stable_swap/BStableProxy01.sol
+// File: contracts/BStableProxy.sol
 
 pragma solidity ^0.6.0;
 
@@ -1052,31 +1073,36 @@ pragma solidity ^0.6.0;
 
 
 
-// 本合约代理 QUSD, BUSD, USDT 兑换
-contract BStableProxy01 is
-    BEP20("bStable Proxy (DAI/BUSD/USDT)", "BSProxy-01"),
-    Ownable,
-    ReentrancyGuard
-{
+
+// Proxy
+contract BStableProxy is IBStableProxy, BEP20, Ownable, ReentrancyGuard {
     using SafeMath for uint256;
 
     address poolAddress;
     address[] coins;
+    address upgradeTo;
+    address revertTo;
+    bool _deprecated = false;
 
-    constructor(address[] memory _coins, address _poolAddress) public {
+    constructor(
+        string memory _name,
+        string memory _symbol,
+        address[] memory _coins
+    ) public BEP20(_name, _symbol) {
         transferOwnership(msg.sender);
         for (uint256 i = 0; i < _coins.length; i++) {
             require(_coins[i] != address(0), "BNB is not support.");
         }
         coins = _coins;
-        poolAddress = _poolAddress;
     }
 
     function A() external view returns (uint256 A1) {
+        require(poolAddress != address(0), "address(0) can't be a pool");
         A1 = IBStablePool(poolAddress).A();
     }
 
     function get_virtual_price() external view returns (uint256 price) {
+        require(poolAddress != address(0), "address(0) can't be a pool");
         price = IBStablePool(poolAddress).get_virtual_price();
     }
 
@@ -1085,6 +1111,7 @@ contract BStableProxy01 is
         view
         returns (uint256 result)
     {
+        require(poolAddress != address(0), "address(0) can't be a pool");
         result = IBStablePool(poolAddress).calc_token_amount(amounts, deposit);
     }
 
@@ -1092,6 +1119,8 @@ contract BStableProxy01 is
         external
         nonReentrant
     {
+        require(_deprecated == false, "derecated");
+        require(poolAddress != address(0), "address(0) can't be a pool");
         for (uint256 i = 0; i < coins.length; i++) {
             TransferHelper.safeTransferFrom(
                 coins[i],
@@ -1111,6 +1140,7 @@ contract BStableProxy01 is
         uint256 j,
         uint256 dx
     ) external view returns (uint256 result) {
+        require(poolAddress != address(0), "address(0) can't be a pool");
         result = IBStablePool(poolAddress).get_dy(i, j, dx);
     }
 
@@ -1119,6 +1149,7 @@ contract BStableProxy01 is
         uint256 j,
         uint256 dx
     ) external view returns (uint256 result) {
+        require(poolAddress != address(0), "address(0) can't be a pool");
         result = IBStablePool(poolAddress).get_dy_underlying(i, j, dx);
     }
 
@@ -1128,6 +1159,8 @@ contract BStableProxy01 is
         uint256 dx,
         uint256 min_dy
     ) external nonReentrant {
+        require(_deprecated == false, "derecated");
+        require(poolAddress != address(0), "address(0) can't be a pool");
         TransferHelper.safeTransferFrom(
             coins[i],
             msg.sender,
@@ -1144,6 +1177,8 @@ contract BStableProxy01 is
         external
         nonReentrant
     {
+        require(_deprecated == false, "derecated");
+        require(poolAddress != address(0), "address(0) can't be a pool");
         TransferHelper.safeTransferFrom(
             poolAddress,
             msg.sender,
@@ -1165,13 +1200,18 @@ contract BStableProxy01 is
         uint256[] calldata amounts,
         uint256 max_burn_amount
     ) external nonReentrant {
+        require(_deprecated == false, "derecated");
+        require(poolAddress != address(0), "address(0) can't be a pool");
         TransferHelper.safeTransferFrom(
             poolAddress,
             msg.sender,
             address(this),
             max_burn_amount
         );
-        IBStablePool(poolAddress).remove_liquidity_imbalance(amounts, max_burn_amount);
+        IBStablePool(poolAddress).remove_liquidity_imbalance(
+            amounts,
+            max_burn_amount
+        );
         uint256 lpBalance = IBStablePool(poolAddress).balanceOf(address(this));
         if (lpBalance > 0) {
             TransferHelper.safeTransfer(poolAddress, msg.sender, lpBalance);
@@ -1187,7 +1227,11 @@ contract BStableProxy01 is
         view
         returns (uint256 result)
     {
-        result = IBStablePool(poolAddress).calc_withdraw_one_coin(_token_amount, i);
+        require(poolAddress != address(0), "address(0) can't be a pool");
+        result = IBStablePool(poolAddress).calc_withdraw_one_coin(
+            _token_amount,
+            i
+        );
     }
 
     function remove_liquidity_one_coin(
@@ -1195,13 +1239,19 @@ contract BStableProxy01 is
         uint256 i,
         uint256 min_amount
     ) external nonReentrant {
+        require(_deprecated == false, "derecated");
+        require(poolAddress != address(0), "address(0) can't be a pool");
         TransferHelper.safeTransferFrom(
             poolAddress,
             msg.sender,
             address(this),
             _token_amount
         );
-        IBStablePool(poolAddress).remove_liquidity_one_coin(_token_amount, i, min_amount);
+        IBStablePool(poolAddress).remove_liquidity_one_coin(
+            _token_amount,
+            i,
+            min_amount
+        );
         uint256 lpBalance = IBStablePool(poolAddress).balanceOf(address(this));
         if (lpBalance > 0) {
             TransferHelper.safeTransfer(poolAddress, msg.sender, lpBalance);
@@ -1214,16 +1264,60 @@ contract BStableProxy01 is
         _poolAddress = poolAddress;
     }
 
+    function getUpgradeTo()
+        external
+        override
+        view
+        returns (address _upgradeTo)
+    {
+        if (upgradeTo != address(0)) {
+            _upgradeTo = upgradeTo;
+        } else {
+            _upgradeTo = address(0);
+        }
+    }
+
+    function getRevertTo() external view returns (address _revertTo) {
+        _revertTo = revertTo;
+    }
+
+    function poolOwner() external view returns (address _poolOwner) {
+        if (poolAddress != address(0)) {
+            _poolOwner = IBStablePool(poolAddress).owner();
+        } else {
+            _poolOwner = address(0);
+        }
+    }
+
+    function isDeprecated() external view returns (bool _r) {
+        _r = _deprecated;
+    }
+
+    function ready() external view returns (bool _r) {
+        if (
+            poolAddress != address(0) &&
+            IBStablePool(poolAddress).owner() == address(this) &&
+            revertTo != address(0) &&
+            _deprecated == false
+        ) {
+            _r = true;
+        } else {
+            _r = false;
+        }
+    }
+
     // Owner only
 
     function ramp_A(uint256 _future_A, uint256 _future_time)
         external
         onlyOwner
     {
+        require(poolAddress != address(0), "address(0) can't be a pool");
         IBStablePool(poolAddress).ramp_A(_future_A, _future_time);
     }
 
     function stop_ramp_A() external onlyOwner {
+        require(poolAddress != address(0), "address(0) can't be a pool");
         IBStablePool(poolAddress).stop_ramp_A();
     }
 
@@ -1231,26 +1325,32 @@ contract BStableProxy01 is
         external
         onlyOwner
     {
+        require(poolAddress != address(0), "address(0) can't be a pool");
         IBStablePool(poolAddress).commit_new_fee(new_fee, new_admin_fee);
     }
 
     function apply_new_fee() external onlyOwner {
+        require(poolAddress != address(0), "address(0) can't be a pool");
         IBStablePool(poolAddress).apply_new_fee();
     }
 
     function revert_new_parameters() external onlyOwner {
+        require(poolAddress != address(0), "address(0) can't be a pool");
         IBStablePool(poolAddress).revert_new_parameters();
     }
 
     function revert_transfer_ownership() external onlyOwner {
+        require(poolAddress != address(0), "address(0) can't be a pool");
         IBStablePool(poolAddress).revert_transfer_ownership();
     }
 
     function admin_balances(uint256 i) external view returns (uint256 balance) {
+        require(poolAddress != address(0), "address(0) can't be a pool");
         return IBStablePool(poolAddress).admin_balances(i);
     }
 
     function withdraw_admin_fees() external onlyOwner {
+        require(poolAddress != address(0), "address(0) can't be a pool");
         IBStablePool(poolAddress).withdraw_admin_fees();
         for (uint256 i = 0; i < coins.length; i++) {
             address c = coins[i];
@@ -1262,24 +1362,64 @@ contract BStableProxy01 is
     }
 
     function donate_admin_fees() external onlyOwner {
+        require(poolAddress != address(0), "address(0) can't be a pool");
         IBStablePool(poolAddress).donate_admin_fees();
     }
 
     function kill_me() external onlyOwner {
+        require(poolAddress != address(0), "address(0) can't be a pool");
         IBStablePool(poolAddress).kill_me();
     }
 
     function unkill_me() external onlyOwner {
+        require(poolAddress != address(0), "address(0) can't be a pool");
         IBStablePool(poolAddress).unkill_me();
     }
 
     function transferPoolOwnership(address nOwner) external onlyOwner {
+        _transferPoolOwnership(nOwner);
+    }
+
+    function _transferPoolOwnership(address nOwner) internal {
         require(nOwner != address(0), "address(0) can't be an owner");
         IBStablePool(poolAddress).transferOwnership(nOwner);
     }
 
-    function setPoolAddress(address _poolAddress) external onlyOwner {
+    function setPoolAddress(address _poolAddress) external override onlyOwner {
         require(_poolAddress != address(0), "address(0) can't be a pool");
         poolAddress = _poolAddress;
+    }
+
+    function setUpgradeTo(address _upgradeTo) external override onlyOwner {
+        require(_upgradeTo != address(0), "can't upgrade to address(0)");
+        upgradeTo = _upgradeTo;
+    }
+
+    function upgrade(address _upgradeTo) external override onlyOwner {
+        require(_upgradeTo != address(0), "can't upgrade to address(0)");
+        require(upgradeTo == _upgradeTo, "the target address wrong");
+        _transferPoolOwnership(upgradeTo);
+        _deprecated = true;
+    }
+
+    function setRevertTo(address _revertTo) external override onlyOwner {
+        require(_revertTo != address(0), "can't revert to address(0)");
+        address _upgradeTo = IBStableProxy(_revertTo).getUpgradeTo();
+        require(_upgradeTo == address(this), "can't set other address");
+        revertTo = _revertTo;
+    }
+
+    function rollBack(address _revertTo) external override onlyOwner {
+        require(_revertTo != revertTo, "roll back target wrong.");
+        _transferPoolOwnership(revertTo);
+        _deprecated = true;
+    }
+
+    function undeprecated() external onlyOwner {
+        _deprecated = false;
+    }
+
+    function deprecated() external onlyOwner {
+        _deprecated = true;
     }
 }

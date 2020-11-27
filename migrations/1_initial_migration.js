@@ -1,5 +1,5 @@
 const StableSwapPool = artifacts.require("StableSwapPool");
-const BStableProxy01 = artifacts.require("BStableProxy01");
+const BStableProxy = artifacts.require("BStableProxy");
 
 module.exports = async function (deployer) {
     if (deployer.network.indexOf('skipMigrations') > -1) { // skip migration
@@ -41,10 +41,10 @@ module.exports = async function (deployer) {
         let fee = 30000000;// 1e-10, 0.003, 0.3%
         // let adminFee = 0;
         let adminFee = 6666666666; // 1e-10, 0.666667, 66.67% 
-        await deployer.deploy(StableSwapPool, stableCoins, A, fee, adminFee);
-        let pool = await StableSwapPool.deployed();
-        let proxy = await deployer.deploy(BStableProxy01, stableCoins, StableSwapPool.address);
-        await pool.transferOwnership(BStableProxy01.address);
+        // await deployer.deploy(StableSwapPool, stableCoins, A, fee, adminFee);
+        // let pool = await StableSwapPool.deployed();
+        let proxy = await deployer.deploy(BStableProxy, "bStable Proxy (DAI/BUSD/USDT)", "BSProxy-01", stableCoins);
+        // await pool.transferOwnership(BStableProxy01.address);
     } else {
 
     }
