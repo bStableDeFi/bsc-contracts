@@ -3,13 +3,15 @@ pragma solidity ^0.6.0;
 import "./BEP20.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 
+// BStable DAO Token
+// All data's decimal is 18.
 contract BStableToken is BEP20("bStable DAO Token", "BST"), Ownable {
     using SafeMath for uint256;
     address minter;
 
     uint256 YEAR = uint256(86400).mul(365);
-    uint256 INITIAL_SUPPLY = 1_303_030_303;
-    uint256 INITIAL_RATE = (274_815_283 * 10**18) / YEAR;
+    uint256 INITIAL_SUPPLY = uint256(1_303_030_303).mul(10**18);
+    uint256 INITIAL_RATE = uint256(274_815_283).mul(10**18).div(YEAR);
     uint256 RATE_REDUCTION_TIME = YEAR;
     uint256 RATE_REDUCTION_COEFFICIENT = 1189207115002721024;
     uint256 INFLATION_DELAY = 86400;
@@ -26,16 +28,16 @@ contract BStableToken is BEP20("bStable DAO Token", "BST"), Ownable {
 
     constructor() public {
         transferOwnership(msg.sender);
-        uint256 init_supply = INITIAL_SUPPLY.mul(10**18);
+        _mint(msg.sender, INITIAL_SUPPLY);
         start_epoch_time = block.timestamp.add(INFLATION_DELAY).sub(
             RATE_REDUCTION_TIME
         );
         mining_epoch = -1;
         rate = 0;
-        start_epoch_supply = init_supply;
+        start_epoch_supply = INITIAL_SUPPLY;
     }
 
-    function _update_mining_parameters() internal {
+    function _updateMiningParameters() internal {
         uint256 _rate = rate;
         uint256 _start_epoch_supply = start_epoch_supply;
 
@@ -59,37 +61,45 @@ contract BStableToken is BEP20("bStable DAO Token", "BST"), Ownable {
         );
     }
 
-    function start_epoch_time_write()
+    function updateMiningParameters() external {
+        require(
+            block.timestamp >= start_epoch_time.add(RATE_REDUCTION_TIME),
+            "# dev: too soon!"
+        );
+        _updateMiningParameters();
+    }
+
+    function startEpochTimeWrite()
         external
         returns (uint256 _start_epoch_time)
     {
-        if (block.timestamp >= _start_epoch_time.add(RATE_REDUCTION_TIME)) {
-            _update_mining_parameters();
+        if (block.timestamp >= start_epoch_time.add(RATE_REDUCTION_TIME)) {
+            _updateMiningParameters();
         }
         _start_epoch_time = start_epoch_time;
     }
 
-    function future_epoch_time_write() external returns (uint256 result) {
+    function futureEpochTimeWrite() external returns (uint256 result) {
         uint256 _start_epoch_time = start_epoch_time;
         if (block.timestamp >= _start_epoch_time.add(RATE_REDUCTION_TIME)) {
-            _update_mining_parameters();
+            _updateMiningParameters();
             result = start_epoch_time.add(RATE_REDUCTION_TIME);
         } else {
             result = _start_epoch_time.add(RATE_REDUCTION_TIME);
         }
     }
 
-    function _available_supply() internal view returns (uint256 result) {
+    function _availableSupply() internal view returns (uint256 result) {
         result = start_epoch_supply
             .add(block.timestamp.sub(start_epoch_time))
             .mul(rate);
     }
 
-    function available_supply() external view returns (uint256 result) {
-        result = _available_supply();
+    function availableSupply() external view returns (uint256 result) {
+        result = _availableSupply();
     }
 
-    function mintable_in_timeframe(uint256 start, uint256 end)
+    function mintableInTimeframe(uint256 start, uint256 end)
         external
         view
         returns (uint256 to_mint)
@@ -143,7 +153,7 @@ contract BStableToken is BEP20("bStable DAO Token", "BST"), Ownable {
         }
     }
 
-    function set_minter(address _minter) external onlyOwner {
+    function setMinter(address _minter) external onlyOwner {
         require(
             minter == address(0),
             "  # dev: can set the minter only once, at creation"
@@ -157,11 +167,11 @@ contract BStableToken is BEP20("bStable DAO Token", "BST"), Ownable {
         require(_to != address(0), " # dev: zero address");
 
         if (block.timestamp >= start_epoch_time.add(RATE_REDUCTION_TIME)) {
-            _update_mining_parameters();
+            _updateMiningParameters();
         }
         uint256 _total_supply = totalSupply().add(_value);
         require(
-            _total_supply <= _available_supply(),
+            _total_supply <= _availableSupply(),
             "# dev: exceeds allowable mint amount"
         );
         _mint(_to, _value);
