@@ -10,10 +10,10 @@ contract BStableToken is BEP20("bStable DAO Token", "BST"), Ownable {
     address minter;
 
     uint256 YEAR = uint256(86400).mul(365);
-    uint256 INITIAL_SUPPLY = uint256(40_000_000_000).mul(10**18); // distribute to employers, investors, and consultants.
-    uint256 INITIAL_RATE = uint256(1_909_243_017).mul(10**18).div(YEAR); // first year release amounts for farming
+    uint256 INITIAL_SUPPLY = uint256(40_000_000_000).mul(10**18);
+    uint256 INITIAL_RATE = uint256(1_909_243_017).mul(10**18).div(YEAR);
     uint256 RATE_REDUCTION_TIME = YEAR;
-    uint256 RATE_REDUCTION_COEFFICIENT = 1189207115002721024; // 1/4 power of 2
+    uint256 RATE_REDUCTION_COEFFICIENT = 1189207115002721024;
     uint256 INFLATION_DELAY = 86400;
 
     int128 mining_epoch;
@@ -160,6 +160,10 @@ contract BStableToken is BEP20("bStable DAO Token", "BST"), Ownable {
         );
         minter = _minter;
         emit SetMinter(_minter);
+    }
+
+    function getMinter() external view returns (address _minter) {
+        _minter = minter;
     }
 
     function mint(address _to, uint256 _value) external returns (bool r) {
