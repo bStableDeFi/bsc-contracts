@@ -44,14 +44,20 @@ contract BStableProxy is IBStableProxy, BEP20, Ownable, ReentrancyGuard {
         uint256 amount
     );
 
+    // state data
     PoolInfo[] pools;
+    mapping(uint256 => address[]) poolUsers;
     uint256 totalAllocPoint = 0;
     address tokenAddress;
     mapping(uint256 => mapping(address => UserInfo)) userInfo;
 
-    address upgradeTo;
-    address revertTo;
-    bool _deprecated = false;
+    bool _openMigration = false;
+    address migrateFrom;
+
+    modifier noOpenMigration() {
+        require(!_openMigration, "a migration is open.");
+        _;
+    }
 
     constructor(address _tokenAddress)
         public
@@ -61,55 +67,76 @@ contract BStableProxy is IBStableProxy, BEP20, Ownable, ReentrancyGuard {
         tokenAddress = _tokenAddress;
     }
 
-    function addPool(
-        address _poolAddress,
-        address[] calldata _coins,
-        uint256 _allocPoint
-    ) external onlyOwner {
-        totalAllocPoint = totalAllocPoint.add(_allocPoint);
-        pools.push(
-            PoolInfo({
-                poolAddress: _poolAddress,
-                coins: _coins,
-                allocPoint: _allocPoint,
-                accTokenPerShare: 0,
-                shareRewardRate: 500_000_000_000_000_000,
-                swapRewardRate: 500_000_000_000_000_000,
-                totalVolAccPoints: 0,
-                totalVolReward: 0,
-                lastUpdateTime: block.timestamp
-            })
-        );
-    }
-
-    function setPoolRewardRate(
-        uint256 _pid,
-        uint256 shareRate,
-        uint256 swapRate
-    ) external {
-        require(
-            shareRate.add(swapRate) <= 1_000_000_000_000_000_000,
-            "sum rate lower then 100%"
-        );
-        pools[_pid].shareRewardRate = shareRate;
-        pools[_pid].swapRewardRate = swapRate;
-    }
-
-    function setPoolCoins(uint256 _pid, address[] calldata _coins) external {
-        pools[_pid].coins = _coins;
-    }
-
-    function setPoolAllocPoint(uint256 _pid, uint256 _allocPoint)
-        external
-        onlyOwner
+    function getPoolInfo(uint256 _pid)
+        public
+        view
+        returns (
+            address _poolAddress,
+            address[] memory _coins,
+            uint256 _allocPoint,
+            uint256 _accTokenPerShare,
+            uint256 _shareRewardRate,
+            uint256 _swapRewardRate,
+            uint256 _totalVolAccPoints,
+            uint256 _totalVolReward,
+            uint256 _lastUpdateTime
+        )
     {
-        totalAllocPoint = totalAllocPoint.sub(pools[_pid].allocPoint).add(
-            _allocPoint
-        );
-        pools[_pid].allocPoint = _allocPoint;
+        _poolAddress = pools[_pid].poolAddress;
+        _coins = pools[_pid].coins;
+        _allocPoint = pools[_pid].allocPoint;
+        _accTokenPerShare = pools[_pid].accTokenPerShare;
+        _shareRewardRate = pools[_pid].shareRewardRate;
+        _swapRewardRate = pools[_pid].swapRewardRate;
+        _totalVolAccPoints = pools[_pid].totalVolAccPoints;
+        _totalVolReward = pools[_pid].totalVolReward;
+        _lastUpdateTime = pools[_pid].lastUpdateTime;
     }
 
-    function A(uint256 _pid) external view returns (uint256 A1) {
+    function getTokenAddress() public view returns (address taddress) {
+        taddress = tokenAddress;
+    }
+
+    function getUserInfo(uint256 _pid, address user)
+        public
+        view
+        returns (
+            uint256 _amount,
+            uint256 _volume,
+            uint256 _rewardDebt
+        )
+    {
+        _amount = userInfo[_pid][user].amount;
+        _volume = userInfo[_pid][user].volume;
+        _rewardDebt = userInfo[_pid][user].rewardDebt;
+    }
+
+    function getPoolUsers(uint256 _pid)
+        public
+        view
+        returns (address[] memory _users)
+    {
+        _users = poolUsers[_pid];
+    }
+
+    function getPoolsLength() public view returns (uint256 l) {
+        l = pools.length;
+    }
+
+    function getTotalAllocPoint() public view returns (uint256 r) {
+        r = totalAllocPoint;
+    }
+
+    function isMigrationOpen() external view returns (bool r) {
+        r = _openMigration;
+    }
+
+    function A(uint256 _pid)
+        external
+        view
+        noOpenMigration
+        returns (uint256 A1)
+    {
         require(
             pools[_pid].poolAddress != address(0),
             "address(0) can't be a pool"
@@ -120,6 +147,7 @@ contract BStableProxy is IBStableProxy, BEP20, Ownable, ReentrancyGuard {
     function get_virtual_price(uint256 _pid)
         external
         view
+        noOpenMigration
         returns (uint256 price)
     {
         require(
@@ -133,7 +161,7 @@ contract BStableProxy is IBStableProxy, BEP20, Ownable, ReentrancyGuard {
         uint256 _pid,
         uint256[] calldata amounts,
         bool deposit
-    ) external view returns (uint256 result) {
+    ) external view noOpenMigration returns (uint256 result) {
         require(
             pools[_pid].poolAddress != address(0),
             "address(0) can't be a pool"
@@ -148,8 +176,7 @@ contract BStableProxy is IBStableProxy, BEP20, Ownable, ReentrancyGuard {
         uint256 _pid,
         uint256[] calldata amounts,
         uint256 min_mint_amount
-    ) external nonReentrant {
-        require(_deprecated == false, "derecated");
+    ) external nonReentrant noOpenMigration {
         require(
             pools[_pid].poolAddress != address(0),
             "address(0) can't be a pool"
@@ -186,7 +213,7 @@ contract BStableProxy is IBStableProxy, BEP20, Ownable, ReentrancyGuard {
         uint256 i,
         uint256 j,
         uint256 dx
-    ) external view returns (uint256 result) {
+    ) external view noOpenMigration returns (uint256 result) {
         require(
             pools[_pid].poolAddress != address(0),
             "address(0) can't be a pool"
@@ -199,7 +226,7 @@ contract BStableProxy is IBStableProxy, BEP20, Ownable, ReentrancyGuard {
         uint256 i,
         uint256 j,
         uint256 dx
-    ) external view returns (uint256 result) {
+    ) external view noOpenMigration returns (uint256 result) {
         require(
             pools[_pid].poolAddress != address(0),
             "address(0) can't be a pool"
@@ -217,8 +244,7 @@ contract BStableProxy is IBStableProxy, BEP20, Ownable, ReentrancyGuard {
         uint256 j,
         uint256 dx,
         uint256 min_dy
-    ) external nonReentrant {
-        require(_deprecated == false, "derecated");
+    ) external nonReentrant noOpenMigration {
         require(
             pools[_pid].poolAddress != address(0),
             "address(0) can't be a pool"
@@ -238,28 +264,27 @@ contract BStableProxy is IBStableProxy, BEP20, Ownable, ReentrancyGuard {
         IBStablePool(pools[_pid].poolAddress).exchange(i, j, dx, min_dy);
         uint256 dy = IBEP20(pools[_pid].coins[j]).balanceOf(address(this));
         TransferHelper.safeTransfer(pools[_pid].coins[j], msg.sender, dy);
-        uint256 accPoints = dy.div(dx).mul(dy); // 当前交易积分
+        uint256 accPoints = dy.div(dx).mul(dy);
         uint256 tokenAmt = IBEP20(tokenAddress).balanceOf(address(this)).mul(
             pools[_pid].swapRewardRate.div(10**18)
-        ); // 可发放奖励的数量
+        );
         uint256 rewardAmt = pools[_pid]
             .totalVolReward
             .add(tokenAmt)
             .mul(accPoints)
-            .div(accPoints.add(pools[_pid].totalVolAccPoints)); // 奖励数量=（之前发放的数量+当前剩余的奖励数量）*本次交易积分/（之前的总交易积分+本次交易积分）
+            .div(accPoints.add(pools[_pid].totalVolAccPoints));
         TransferHelper.safeTransfer(tokenAddress, msg.sender, rewardAmt);
-        pools[_pid].totalVolReward = pools[_pid].totalVolReward.add(
-            rewardAmt
+        pools[_pid].totalVolReward = pools[_pid].totalVolReward.add(rewardAmt);
+        pools[_pid].totalVolAccPoints = pools[_pid].totalVolAccPoints.add(
+            accPoints
         );
-        pools[_pid].totalVolAccPoints = pools[_pid].totalVolAccPoints.add(accPoints);
     }
 
     function remove_liquidity(
         uint256 _pid,
         uint256 _amount,
         uint256[] calldata min_amounts
-    ) external nonReentrant {
-        require(_deprecated == false, "derecated");
+    ) external nonReentrant noOpenMigration {
         require(
             pools[_pid].poolAddress != address(0),
             "address(0) can't be a pool"
@@ -300,8 +325,7 @@ contract BStableProxy is IBStableProxy, BEP20, Ownable, ReentrancyGuard {
         uint256 _pid,
         uint256[] calldata amounts,
         uint256 max_burn_amount
-    ) external nonReentrant {
-        require(_deprecated == false, "derecated");
+    ) external nonReentrant noOpenMigration {
         require(
             pools[_pid].poolAddress != address(0),
             "address(0) can't be a pool"
@@ -342,7 +366,7 @@ contract BStableProxy is IBStableProxy, BEP20, Ownable, ReentrancyGuard {
         uint256 _pid,
         uint256 _token_amount,
         uint256 i
-    ) external view returns (uint256 result) {
+    ) external view noOpenMigration returns (uint256 result) {
         require(
             pools[_pid].poolAddress != address(0),
             "address(0) can't be a pool"
@@ -358,8 +382,7 @@ contract BStableProxy is IBStableProxy, BEP20, Ownable, ReentrancyGuard {
         uint256 _token_amount,
         uint256 i,
         uint256 min_amount
-    ) external nonReentrant {
-        require(_deprecated == false, "derecated");
+    ) external nonReentrant noOpenMigration {
         require(
             pools[_pid].poolAddress != address(0),
             "address(0) can't be a pool"
@@ -394,6 +417,7 @@ contract BStableProxy is IBStableProxy, BEP20, Ownable, ReentrancyGuard {
     function getPoolAddress(uint256 _pid)
         external
         view
+        noOpenMigration
         returns (address _poolAddress)
     {
         _poolAddress = pools[_pid].poolAddress;
@@ -402,6 +426,7 @@ contract BStableProxy is IBStableProxy, BEP20, Ownable, ReentrancyGuard {
     function pendingReward(uint256 _pid, address _user)
         external
         view
+        noOpenMigration
         returns (uint256)
     {
         PoolInfo storage pool = pools[_pid];
@@ -425,14 +450,14 @@ contract BStableProxy is IBStableProxy, BEP20, Ownable, ReentrancyGuard {
             user.amount.mul(accSushiPerShare).div(10**18).sub(user.rewardDebt);
     }
 
-    function massUpdatePools() external {
+    function massUpdatePools() external noOpenMigration {
         uint256 length = pools.length;
         for (uint256 pid = 0; pid < length; ++pid) {
             updatePool(pid);
         }
     }
 
-    function updatePool(uint256 _pid) public {
+    function updatePool(uint256 _pid) public noOpenMigration {
         PoolInfo storage pool = pools[_pid];
         if (block.number <= pool.lastUpdateTime) {
             return;
@@ -458,9 +483,10 @@ contract BStableProxy is IBStableProxy, BEP20, Ownable, ReentrancyGuard {
         pool.lastUpdateTime = block.number;
     }
 
-    function deposit(uint256 _pid, uint256 _amount) external {
+    function deposit(uint256 _pid, uint256 _amount) external noOpenMigration {
         PoolInfo storage pool = pools[_pid];
         UserInfo storage user = userInfo[_pid][msg.sender];
+        poolUsers[_pid].push(msg.sender);
         updatePool(_pid);
         if (user.amount > 0) {
             uint256 pending = user
@@ -485,7 +511,7 @@ contract BStableProxy is IBStableProxy, BEP20, Ownable, ReentrancyGuard {
         emit Deposit(msg.sender, _pid, _amount);
     }
 
-    function withdraw(uint256 _pid, uint256 _amount) external {
+    function withdraw(uint256 _pid, uint256 _amount) external noOpenMigration {
         PoolInfo storage pool = pools[_pid];
         UserInfo storage user = userInfo[_pid][msg.sender];
         require(user.amount >= _amount, "withdraw: not good");
@@ -510,7 +536,7 @@ contract BStableProxy is IBStableProxy, BEP20, Ownable, ReentrancyGuard {
         emit Withdraw(msg.sender, _pid, _amount);
     }
 
-    function emergencyWithdraw(uint256 _pid) external {
+    function emergencyWithdraw(uint256 _pid) external noOpenMigration {
         PoolInfo storage pool = pools[_pid];
         UserInfo storage user = userInfo[_pid][msg.sender];
         uint256 amount = user.amount;
@@ -522,5 +548,15 @@ contract BStableProxy is IBStableProxy, BEP20, Ownable, ReentrancyGuard {
             amount
         );
         emit EmergencyWithdraw(msg.sender, _pid, amount);
+    }
+
+    // only owner
+
+    function openMigration() external onlyOwner {
+        _openMigration = true;
+    }
+
+    function closeMigration() external onlyOwner {
+        _openMigration = false;
     }
 }
