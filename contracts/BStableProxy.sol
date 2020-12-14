@@ -26,7 +26,8 @@ contract BStableProxy is IBStableProxy, BEP20, Ownable, ReentrancyGuard {
         uint256 accTokenPerShare;
         uint256 shareRewardRate; //  share reward percent of total release amount. wei
         uint256 swapRewardRate; //  swap reward percent of total release amount.  wei
-        uint256 totalVolume; // total swap volume. wei
+        uint256 totalVolAccPoints; // total volume accumulate points. wei, 总交易积分
+        uint256 totalVolReward; // total volume reword. wei 总发放的交易奖励数量
         uint256 lastUpdateTime;
     }
     struct UserInfo {
@@ -74,7 +75,8 @@ contract BStableProxy is IBStableProxy, BEP20, Ownable, ReentrancyGuard {
                 accTokenPerShare: 0,
                 shareRewardRate: 500_000_000_000_000_000,
                 swapRewardRate: 500_000_000_000_000_000,
-                totalVolume: 0,
+                totalVolAccPoints: 0,
+                totalVolReward: 0,
                 lastUpdateTime: block.timestamp
             })
         );
@@ -221,6 +223,7 @@ contract BStableProxy is IBStableProxy, BEP20, Ownable, ReentrancyGuard {
             pools[_pid].poolAddress != address(0),
             "address(0) can't be a pool"
         );
+        updatePool(_pid);
         TransferHelper.safeTransferFrom(
             pools[_pid].coins[i],
             msg.sender,
@@ -235,6 +238,20 @@ contract BStableProxy is IBStableProxy, BEP20, Ownable, ReentrancyGuard {
         IBStablePool(pools[_pid].poolAddress).exchange(i, j, dx, min_dy);
         uint256 dy = IBEP20(pools[_pid].coins[j]).balanceOf(address(this));
         TransferHelper.safeTransfer(pools[_pid].coins[j], msg.sender, dy);
+        uint256 accPoints = dy.div(dx).mul(dy); // 当前交易积分
+        uint256 tokenAmt = IBEP20(tokenAddress).balanceOf(address(this)).mul(
+            pools[_pid].swapRewardRate.div(10**18)
+        ); // 可发放奖励的数量
+        uint256 rewardAmt = pools[_pid]
+            .totalVolReward
+            .add(tokenAmt)
+            .mul(accPoints)
+            .div(accPoints.add(pools[_pid].totalVolAccPoints)); // 奖励数量=（之前发放的数量+当前剩余的奖励数量）*本次交易积分/（之前的总交易积分+本次交易积分）
+        TransferHelper.safeTransfer(tokenAddress, msg.sender, rewardAmt);
+        pools[_pid].totalVolReward = pools[_pid].totalVolReward.add(
+            rewardAmt
+        );
+        pools[_pid].totalVolAccPoints = pools[_pid].totalVolAccPoints.add(accPoints);
     }
 
     function remove_liquidity(
@@ -428,12 +445,13 @@ contract BStableProxy is IBStableProxy, BEP20, Ownable, ReentrancyGuard {
         uint256 releaseAmt = IBStableToken(tokenAddress).availableSupply().sub(
             IBStableToken(tokenAddress).totalSupply()
         );
+        uint256 mintAmt = releaseAmt.mul(pool.allocPoint).div(totalAllocPoint);
         uint256 reward = releaseAmt
             .mul(pool.shareRewardRate)
             .div(10**18)
             .mul(pool.allocPoint)
             .div(totalAllocPoint);
-        IBStableToken(tokenAddress).mint(address(this), reward);
+        IBStableToken(tokenAddress).mint(address(this), mintAmt);
         pool.accTokenPerShare = pool.accTokenPerShare.add(
             reward.mul(10**18).div(lpSupply)
         );
@@ -472,9 +490,11 @@ contract BStableProxy is IBStableProxy, BEP20, Ownable, ReentrancyGuard {
         UserInfo storage user = userInfo[_pid][msg.sender];
         require(user.amount >= _amount, "withdraw: not good");
         updatePool(_pid);
-        uint256 pending = user.amount.mul(pool.accTokenPerShare).div(10**18).sub(
-            user.rewardDebt
-        );
+        uint256 pending = user
+            .amount
+            .mul(pool.accTokenPerShare)
+            .div(10**18)
+            .sub(user.rewardDebt);
         if (pending > 0) {
             TransferHelper.safeTransfer(tokenAddress, msg.sender, pending);
         }
