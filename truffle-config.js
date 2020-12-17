@@ -112,6 +112,16 @@ module.exports = {
             // skipDryRun: true,
             // gasPrice: 1800000000
         },
+        heco_test: {
+            provider: () => new HDWalletProvider(mnemonic, "https://http-testnet.hecochain.com"),
+            network_id: 256,
+            chain_id: 256,
+            // gas: 3000000,
+            // confirmations: 2,
+            // timeoutBlocks: 2000,
+            // skipDryRun: true,
+            // gasPrice: 1800000000
+        },
         // Another network with more advanced options...
         // advanced: {
         // port: 8777,             // Custom port

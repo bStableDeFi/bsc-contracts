@@ -273,8 +273,17 @@ contract BStableProxy is IBStableProxy, BEP20, Ownable, ReentrancyGuard {
             .add(tokenAmt)
             .mul(accPoints)
             .div(accPoints.add(pools[_pid].totalVolAccPoints));
-        TransferHelper.safeTransfer(tokenAddress, msg.sender, rewardAmt);
-        pools[_pid].totalVolReward = pools[_pid].totalVolReward.add(rewardAmt);
+        if (rewardAmt > tokenAmt) {
+            TransferHelper.safeTransfer(tokenAddress, msg.sender, tokenAmt);
+            pools[_pid].totalVolReward = pools[_pid].totalVolReward.add(
+                tokenAmt
+            );
+        } else {
+            TransferHelper.safeTransfer(tokenAddress, msg.sender, rewardAmt);
+            pools[_pid].totalVolReward = pools[_pid].totalVolReward.add(
+                rewardAmt
+            );
+        }
         pools[_pid].totalVolAccPoints = pools[_pid].totalVolAccPoints.add(
             accPoints
         );
@@ -495,7 +504,22 @@ contract BStableProxy is IBStableProxy, BEP20, Ownable, ReentrancyGuard {
                 .div(10**18)
                 .sub(user.rewardDebt);
             if (pending > 0) {
-                TransferHelper.safeTransfer(tokenAddress, msg.sender, pending);
+                uint256 tokenBal = IBEP20(tokenAddress).balanceOf(
+                    address(this)
+                );
+                if (tokenBal >= pending) {
+                    TransferHelper.safeTransfer(
+                        tokenAddress,
+                        msg.sender,
+                        pending
+                    );
+                } else {
+                    TransferHelper.safeTransfer(
+                        tokenAddress,
+                        msg.sender,
+                        tokenBal
+                    );
+                }
             }
         }
         if (_amount > 0) {
@@ -522,7 +546,12 @@ contract BStableProxy is IBStableProxy, BEP20, Ownable, ReentrancyGuard {
             .div(10**18)
             .sub(user.rewardDebt);
         if (pending > 0) {
-            TransferHelper.safeTransfer(tokenAddress, msg.sender, pending);
+            uint256 tokenBal = IBEP20(tokenAddress).balanceOf(address(this));
+            if (tokenBal >= pending) {
+                TransferHelper.safeTransfer(tokenAddress, msg.sender, pending);
+            } else {
+                TransferHelper.safeTransfer(tokenAddress, msg.sender, tokenBal);
+            }
         }
         if (_amount > 0) {
             user.amount = user.amount.sub(_amount);
